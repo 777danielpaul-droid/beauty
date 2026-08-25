@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #00f0ff;
+  --color-secondary: #6d28d9;
+  --color-bordeaux: #7b1e2b;
+  --color-amber: #DDC49A;
+  --color-neutral: #636367;
+
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'Fira Code', ui-monospace, monospace;
+}
+
+@layer base {
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+  }
+
+  body {
+    @apply bg-[#050508] font-sans text-white antialiased;
+  }
+
+  #root {
+    min-height: 100dvh;
+  }
+}
+
+@layer utilities {
+  .gradient-text {
+    @apply bg-gradient-to-r from-emerald-300 via-teal-200 to-violet-300 bg-clip-text text-transparent;
+  }
+
+  .glass {
+    @apply bg-white/5 border border-white/20 backdrop-blur-xl;
+  }
+
+  .glass-hover:hover {
+    @apply bg-white/10 border-white/30;
+  }
+}
