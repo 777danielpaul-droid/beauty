@@ -19,8 +19,18 @@
     overflow-x: hidden;
   }
 
+  /* Light mode: white background, dark text */
   body {
-    @apply bg-[#050508] font-sans text-white antialiased;
+    @apply font-sans antialiased transition-colors duration-300;
+    background: #ffffff;
+    color: #1a1a1a;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    body {
+      background: #000000;
+      color: #f0f0f0;
+    }
   }
 
   #root {
@@ -34,10 +44,6 @@
   }
 
   .glass {
-    @apply bg-white/5 border border-white/20 backdrop-blur-xl;
-  }
-
-  .glass-hover:hover {
-    @apply bg-white/10 border-white/30;
+    @apply border border-white/20 backdrop-blur-xl;
   }
 }

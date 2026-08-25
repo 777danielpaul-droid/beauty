@@ -1,5 +1,4 @@
 import { motion } from 'motion/react'
-import type { ReactNode } from 'react'
 import { useEffect, useRef } from 'react'
 import { cn } from '@/lib/utils'
 
@@ -28,7 +27,7 @@ interface ThemeConfig {
 
 export interface FlowFieldProps {
   className?: string;
-  children?: ReactNode;
+  children?: React.ReactNode;
   theme?: ColorTheme;
   density?: ParticleDensity;
 }
@@ -81,37 +80,6 @@ function fieldAngle(x: number, y: number, t: number): number {
     Math.cos(y * s + t * 0.0005) * Math.PI +
     Math.sin((x + y) * s * 0.6 + t * 0.0009) * Math.PI * 0.6 +
     Math.cos((x - y) * s * 0.4 + t * 0.0006) * Math.PI * 0.4
-  );
-}
-
-// ─── Default hero content ─────────────────────────────────────────────────────
-
-function DefaultContent() {
-  return (
-    <div className="relative z-10 flex flex-col items-center justify-center gap-6 px-6 text-center">
-      <motion.h1
-        animate={{ opacity: 1, y: 0 }}
-        className="max-w-3xl font-bold text-5xl text-white leading-[1.08] tracking-tight sm:text-6xl md:text-7xl"
-        initial={{ opacity: 0, y: 20 }}
-        transition={{ duration: 0.9, delay: 0.38, ease: [0.22, 0.61, 0.36, 1] }}
-      >
-        Chaos finds its
-        <br />
-        <span className="bg-gradient-to-r from-emerald-300 via-teal-200 to-violet-300 bg-clip-text text-transparent">
-          own beauty
-        </span>
-      </motion.h1>
-
-      <motion.p
-        animate={{ opacity: 1, y: 0 }}
-        className="max-w-md text-base text-white/50 leading-relaxed"
-        initial={{ opacity: 0, y: 16 }}
-        transition={{ duration: 0.9, delay: 0.56, ease: "easeOut" }}
-      >
-        Thousands of particles drift through an organic noise field, painting
-        luminous trails that shift and spiral endlessly.
-      </motion.p>
-    </div>
   );
 }
 
@@ -269,7 +237,7 @@ export default function FlowField({
         }}
       />
 
-      {children ?? <DefaultContent />}
+      {children}
     </div>
   );
 }

@@ -7,7 +7,7 @@ export default function About() {
         <motion.h1
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-6 text-4xl font-bold text-white"
+          className="mb-6 text-4xl font-bold text-black dark:text-white"
         >
           About
         </motion.h1>
@@ -15,7 +15,7 @@ export default function About() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="text-white/60 leading-relaxed"
+          className="leading-relaxed text-black/60 dark:text-white/60"
         >
           This project showcases a Canvas particle flow field background — an
           organic noise-driven simulation of thousands of glowing streams. The
