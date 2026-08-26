@@ -46,7 +46,7 @@ const THEMES: Record<ColorTheme, ThemeConfig> = {
     hueRange: 200,
     saturation: 90,
     lightness: 62,
-    bg: "5, 5, 8",
+    bg: "0, 0, 0",
     trailAlpha: 0.06,
   },
   ember: {
@@ -54,7 +54,7 @@ const THEMES: Record<ColorTheme, ThemeConfig> = {
     hueRange: 55,
     saturation: 95,
     lightness: 58,
-    bg: "8, 4, 2",
+    bg: "0, 0, 0",
     trailAlpha: 0.07,
   },
   ocean: {
@@ -62,7 +62,7 @@ const THEMES: Record<ColorTheme, ThemeConfig> = {
     hueRange: 90,
     saturation: 88,
     lightness: 60,
-    bg: "2, 6, 10",
+    bg: "0, 0, 0",
     trailAlpha: 0.06,
   },
 } as const;
