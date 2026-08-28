@@ -1,5 +1,6 @@
 import { motion } from 'motion/react'
 import FlowField from '../components/FlowField'
+import TypewriterTitle from '../components/TypewriterTitle'
 
 export default function Home() {
   return (
@@ -7,24 +8,18 @@ export default function Home() {
       {/* Hero: Video-only section */}
       <HeroSection />
 
-      {/* FlowField as background for the rest of the page */}
+      {/* FlowField as animated background for the text section */}
       <FlowField theme="aurora" density="medium" className="min-h-screen">
         <div className="relative z-10 mx-auto max-w-4xl px-6 py-20 text-center">
-          <motion.h2
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="mb-6 text-3xl font-bold text-black dark:text-white"
-          >
-            Chaos Engine
-          </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.1 }}
-            className="text-lg text-black/60 dark:text-white/60"
+            transition={{ duration: 0.6 }}
+            className="text-lg text-white/60"
           >
-            Scroll down to see the noise field animate beneath you.
+            This project explores the boundary between chaos and order — where
+            organic noise fields collide with precise digital geometry, creating
+            emergent beauty from simple rules.
           </motion.p>
         </div>
       </FlowField>
@@ -35,6 +30,7 @@ export default function Home() {
 function HeroSection() {
   return (
     <section className="relative h-screen w-full overflow-hidden">
+      {/* 15.7s hero video — full screen background */}
       <video
         autoPlay
         muted
@@ -45,30 +41,21 @@ function HeroSection() {
         <source src="/videos/flowfield-hero-clip.mp4" type="video/mp4" />
       </video>
 
-      {/* Hero content — centered, neon style */}
-      <div className="relative z-10 flex h-full flex-col items-center justify-center px-6 text-center">
-        <motion.h1
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.9, delay: 0.3, ease: [0.22, 0.61, 0.36, 1] }}
-          className="max-w-4xl font-bold text-5xl text-black dark:text-white sm:text-6xl md:text-7xl"
-        >
-          Chaos finds its
-          <br />
-          <span className="bg-gradient-to-r from-emerald-300 via-teal-200 to-violet-300 bg-clip-text text-transparent">
-            own beauty
-          </span>
-        </motion.h1>
+      {/* Gradient overlay for text readability */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/40" />
 
-        <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.9, delay: 0.5, ease: 'easeOut' }}
-          className="mt-6 max-w-md text-lg text-black/80 dark:text-white/80"
-        >
-          Thousands of particles drift through an organic noise field, painting
-          luminous trails that shift and spiral endlessly.
-        </motion.p>
+      {/* Hero content — centered */}
+      <div className="relative z-10 flex h-full flex-col items-center justify-center px-6 text-center">
+        <TypewriterTitle
+          sequences={[{ text: "fireworx", deleteAfter: false }]}
+          typingSpeed={140}
+          startDelay={600}
+          autoLoop={false}
+          naturalVariance={true}
+          textClassName="text-white drop-shadow-[0_2px_20px_rgba(0,0,0,0.6)]"
+          cursorClassName="bg-white"
+          className="py-0"
+        />
       </div>
     </section>
   )

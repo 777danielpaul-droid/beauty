@@ -47,7 +47,7 @@ const THEMES: Record<ColorTheme, ThemeConfig> = {
     saturation: 90,
     lightness: 62,
     bg: "0, 0, 0",
-    trailAlpha: 0.06,
+    trailAlpha: 0.12,
   },
   ember: {
     hueStart: 0,
@@ -55,7 +55,7 @@ const THEMES: Record<ColorTheme, ThemeConfig> = {
     saturation: 95,
     lightness: 58,
     bg: "0, 0, 0",
-    trailAlpha: 0.07,
+    trailAlpha: 0.12,
   },
   ocean: {
     hueStart: 180,
@@ -63,7 +63,7 @@ const THEMES: Record<ColorTheme, ThemeConfig> = {
     saturation: 88,
     lightness: 60,
     bg: "0, 0, 0",
-    trailAlpha: 0.06,
+    trailAlpha: 0.12,
   },
 } as const;
 
@@ -131,8 +131,8 @@ export default function FlowField({
       canvas.style.height = `${height}px`;
       ctx.scale(dpr, dpr);
 
-      // Fill dark base on resize
-      ctx.fillStyle = `rgb(${cfg.bg})`;
+      // Fill deep black base on resize
+      ctx.fillStyle = "#000000";
       ctx.fillRect(0, 0, width, height);
 
       // Re-seed particles spread across the canvas
@@ -142,9 +142,8 @@ export default function FlowField({
     const render = () => {
       time++;
 
-      // Fade previous frame — each dot persists ~16 frames, creating soft trails
-      ctx.fillStyle = `rgba(${cfg.bg}, ${cfg.trailAlpha})`;
-      ctx.fillRect(0, 0, width, height);
+      // Clear canvas each frame — no trail overlay
+      ctx.clearRect(0, 0, width, height);
 
       for (const p of particles) {
         const angle = fieldAngle(p.x, p.y, time);
@@ -168,11 +167,11 @@ export default function FlowField({
         if (p.y < 0) p.y += height;
         else if (p.y > height) p.y -= height;
 
-        // Fade in / out over particle lifetime
+        // Fade in / out over particle lifetime — scaled for colored trails
         const progress = p.life / p.maxLife;
         const fadeIn = Math.min(progress * 8, 1);
         const fadeOut = Math.min((1 - progress) * 6, 1);
-        const alpha = fadeIn * fadeOut * 0.9;
+        const alpha = fadeIn * fadeOut * 0.5;
 
         // Hue shifts subtly with field direction for color variety
         const hueMod = (p.hue + (angle / (Math.PI * 2)) * 70 + 360) % 360;
@@ -196,45 +195,18 @@ export default function FlowField({
     };
   }, [theme, density]);
 
-  const bgColor = THEMES[theme].bg;
-
   return (
     <div
       className={cn(
         "relative flex min-h-screen w-full items-center justify-center overflow-hidden",
         className
       )}
-      style={{ background: `rgb(${bgColor})` }}
+      style={{ background: "#000000" }}
     >
       <canvas
         aria-hidden="true"
         className="pointer-events-none absolute inset-0"
         ref={canvasRef}
-      />
-
-      {/* Radial vignette — focuses center, dims edges */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background: `radial-gradient(ellipse 65% 60% at 50% 50%, transparent 20%, rgba(${bgColor}, 0.92) 100%)`,
-        }}
-      />
-
-      {/* Soft top / bottom fades */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 h-40"
-        style={{
-          background: `linear-gradient(to bottom, rgb(${bgColor}), transparent)`,
-        }}
-      />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-40"
-        style={{
-          background: `linear-gradient(to top, rgb(${bgColor}), transparent)`,
-        }}
       />
 
       {children}

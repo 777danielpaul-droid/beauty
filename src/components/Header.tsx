@@ -1,7 +1,8 @@
-import { Link, NavLink } from 'react-router'
+import { NavLink } from 'react-router'
 import { motion } from 'motion/react'
 import { useEffect, useState } from 'react'
 import { cn } from '../lib/utils'
+import { Sun, Moon } from 'lucide-react'
 
 const NAV_ITEMS = [
   { name: 'Home', to: '/' },
@@ -11,6 +12,7 @@ const NAV_ITEMS = [
 
 export default function Header() {
   const [scrolled, setScrolled] = useState(false)
+  const [inverted, setInverted] = useState(false)
 
   useEffect(() => {
     const handleScroll = () => {
@@ -20,6 +22,15 @@ export default function Header() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
+  useEffect(() => {
+    const root = document.documentElement
+    if (inverted) {
+      root.classList.add('invert-all')
+    } else {
+      root.classList.remove('invert-all')
+    }
+  }, [inverted])
+
   return (
     <header
       className={cn(
@@ -28,12 +39,6 @@ export default function Header() {
       )}
     >
       <nav className="mx-auto flex h-14 items-center justify-between px-6">
-        <Link to="/" className="text-xl font-bold">
-          <span className="gradient-text bg-gradient-to-r from-emerald-300 via-teal-200 to-violet-300 bg-clip-text text-transparent">
-            CHAOS
-          </span>
-        </Link>
-
         <div className="flex items-center gap-2">
           {NAV_ITEMS.map((item) => (
             <NavLink
@@ -48,6 +53,24 @@ export default function Header() {
             />
           ))}
         </div>
+        <button
+          type="button"
+          aria-label="Invert colors"
+          title="Invert colors"
+          onClick={() => setInverted(!inverted)}
+          className={cn(
+            'rounded-xl p-2 text-black/60 hover:text-black dark:text-white/60 dark:hover:text-white transition-colors',
+            inverted && 'text-black dark:text-white',
+          )}
+        >
+          <motion.span
+            animate={{ rotate: inverted ? 180 : 0 }}
+            transition={{ duration: 0.4, ease: 'easeInOut' }}
+            className="inline-block"
+          >
+            {inverted ? <Moon size={18} /> : <Sun size={18} />}
+          </motion.span>
+        </button>
       </nav>
     </header>
   )
