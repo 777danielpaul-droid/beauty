@@ -47,8 +47,19 @@ function HeroSection() {
       {/* Hero content — centered */}
       <div className="relative z-10 flex h-full flex-col items-center justify-center px-6 text-center">
         <TypewriterTitle
-          sequences={[{ text: "fireworx", deleteAfter: false }]}
-          typingSpeed={140}
+          sequences={[
+            { text: "pixel.fireworx", deleteAfter: true, pauseAfter: 3000 },
+            {
+              text: "WHATEVER YOU CAN IMAGINE, I WILL BUILD IT.",
+              deleteAfter: true,
+              pauseAfter: 3000,
+            },
+            {
+              text: "I turn ideas into working digital products.",
+              deleteAfter: false,
+            },
+          ]}
+          typingSpeed={120}
           startDelay={600}
           autoLoop={false}
           naturalVariance={true}
