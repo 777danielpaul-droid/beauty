@@ -5,6 +5,7 @@ import { cn } from '../lib/utils'
 import { Sun, Moon, Menu, X } from 'lucide-react'
 
 const NAV_ITEMS = [
+  { name: 'home', to: '/' },
   { name: 'dna', to: '/dna' },
   { name: 'experimente', to: '/experimente' },
   { name: 'produkte', to: '/produkte' },
