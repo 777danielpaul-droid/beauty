@@ -1,36 +1,13 @@
-import { motion } from 'motion/react'
-import FlowField from '../components/FlowField'
 import TypewriterTitle from '../components/TypewriterTitle'
 
 export default function Home() {
-  return (
-    <>
-      {/* Hero: Video-only section */}
-      <HeroSection />
-
-      {/* FlowField as animated background for the text section */}
-      <FlowField theme="aurora" density="medium" className="min-h-screen">
-        <div className="relative z-10 mx-auto max-w-4xl px-6 py-20 text-center">
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="text-lg text-white/60"
-          >
-            This project explores the boundary between chaos and order — where
-            organic noise fields collide with precise digital geometry, creating
-            emergent beauty from simple rules.
-          </motion.p>
-        </div>
-      </FlowField>
-    </>
-  )
+  return <HeroSection />
 }
 
 function HeroSection() {
   return (
     <section className="relative h-screen w-full overflow-hidden">
-      {/* 15.7s hero video — full screen background */}
+      {/* Hero video — 15.7s full screen background */}
       <video
         autoPlay
         muted
