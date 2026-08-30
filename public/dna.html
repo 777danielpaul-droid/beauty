@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sequenz — Doppelhelix</title>
+<style>
+  :root{
+    --bg-void: #030712;
+    --cyan-core: #eafffe;
+    --cyan-inner: #a5f3fc;
+    --cyan-mid: #22d3ee;
+    --cyan-outer: #0e7490;
+    --amber: #ffb454;
+    --ink: #dff7f7;
+    --ink-dim: #7fa8ab;
+    --glass: rgba(6, 20, 24, 0.55);
+    --line: rgba(165, 243, 252, 0.18);
+    --font-display: 'Space Grotesk', -apple-system, 'Segoe UI', sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  }
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: var(--bg-void);
+    overflow: hidden;
+    font-family: var(--font-display);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+  #scene-root { position: fixed; inset: 0; }
+  #scene-root canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+
+  /* subtle ambient page glow behind the transparent canvas, purely cosmetic for the demo shell */
+  #bg-wash {
+    position: fixed; inset: 0; z-index: 0;
+    background:
+      radial-gradient(60% 45% at 22% 30%, rgba(14,116,144,0.16), transparent 60%),
+      radial-gradient(50% 40% at 80% 70%, rgba(34,211,238,0.10), transparent 60%);
+    pointer-events: none;
+  }
+
+  #ui { position: fixed; inset: 0; z-index: 5; pointer-events: none; }
+
+  header.hud {
+    position: absolute; top: 0; left: 0; right: 0;
+    display: flex; justify-content: space-between; align-items: flex-start;
+    padding: clamp(18px, 3vw, 34px);
+  }
+  .hud-mark {
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.18em;
+    color: var(--ink-dim); text-transform: uppercase;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .hud-mark b { color: var(--cyan-inner); font-weight: 500; }
+  .hud-coord {
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.1em;
+    color: var(--ink-dim); text-align: right;
+  }
+  .hud-coord span { color: var(--cyan-mid); }
+
+  /* vertical progress rail, right edge */
+  #rail {
+    position: absolute; top: 50%; right: clamp(16px, 3vw, 40px);
+    transform: translateY(-50%);
+    height: min(56vh, 460px); width: 46px;
+    pointer-events: none;
+  }
+  #rail .track {
+    position: absolute; left: 50%; top: 0; bottom: 0; width: 1px;
+    background: var(--line); transform: translateX(-50%);
+  }
+  #rail .fill {
+    position: absolute; left: 50%; bottom: 0; width: 1px;
+    background: linear-gradient(to top, var(--cyan-mid), var(--cyan-core));
+    box-shadow: 0 0 8px var(--cyan-mid);
+    transform: translateX(-50%);
+    height: 0%;
+    transition: height 0.05s linear;
+  }
+  .rail-node {
+    position: absolute; left: 50%; width: 9px; height: 9px;
+    transform: translate(-50%, 50%) rotate(45deg);
+    border: 1px solid var(--ink-dim);
+    background: var(--bg-void);
+    transition: border-color .3s, background .3s, box-shadow .3s;
+  }
+  .rail-node.active {
+    border-color: var(--cyan-core);
+    background: var(--cyan-mid);
+    box-shadow: 0 0 10px var(--cyan-mid), 0 0 22px rgba(34,211,238,0.6);
+  }
+  .rail-node .rn-label {
+    position: absolute; right: 18px; top: 50%; transform: translateY(-50%) rotate(-45deg);
+    font-family: var(--font-mono); font-size: 10px; color: var(--ink-dim);
+    white-space: nowrap; letter-spacing: 0.08em;
+    opacity: 0; transition: opacity .3s;
+  }
+  .rail-node.active .rn-label { opacity: 1; color: var(--cyan-inner); }
+
+  /* station info card */
+  #card {
+    position: absolute; left: clamp(20px, 5vw, 72px); bottom: clamp(20px, 6vh, 64px);
+    width: min(380px, 84vw);
+    padding: 22px 24px;
+    background: var(--glass);
+    border: 1px solid var(--line);
+    border-left: 2px solid var(--cyan-mid);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    opacity: 0; transform: translateY(14px);
+    transition: opacity .5s ease, transform .5s ease;
+  }
+  #card.show { opacity: 1; transform: translateY(0); }
+  #card .idx {
+    font-family: var(--font-mono); font-size: 11px; color: var(--cyan-mid);
+    letter-spacing: 0.18em; margin-bottom: 8px; display: block;
+  }
+  #card h2 {
+    margin: 0 0 10px; font-size: clamp(20px, 3vw, 26px); font-weight: 500;
+    color: var(--ink);
+  }
+  #card p {
+    margin: 0 0 14px; font-size: 13.5px; line-height: 1.55; color: var(--ink-dim);
+  }
+  #card .stat {
+    font-family: var(--font-mono); font-size: 12px; color: var(--cyan-inner);
+    border-top: 1px solid var(--line); padding-top: 10px;
+    display: flex; justify-content: space-between;
+  }
+
+  #scrollhint {
+    position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%);
+    font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.2em;
+    color: var(--ink-dim); text-transform: uppercase;
+    opacity: 1; transition: opacity .6s;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+  }
+  #scrollhint .chev { width: 1px; height: 22px; background: linear-gradient(to bottom, transparent, var(--cyan-mid)); animation: driftdown 1.6s ease-in-out infinite; }
+  @keyframes driftdown { 0%{opacity:0; transform: translateY(-4px);} 50%{opacity:1;} 100%{opacity:0; transform: translateY(10px);} }
+
+  #loading {
+    position: fixed; inset: 0; z-index: 20; background: var(--bg-void);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.2em;
+    color: var(--cyan-mid); text-transform: uppercase;
+    transition: opacity .6s ease;
+  }
+  #loading .dot { display:inline-block; width: 5px; height: 5px; background: var(--cyan-mid); margin-left: 8px; animation: blink 1s infinite; }
+  @keyframes blink { 50% { opacity: 0.15; } }
+
+  @media (max-width: 640px) {
+    #rail { display: none; }
+    #card { bottom: 18px; padding: 18px 20px; }
+  }
+</style>
+</head>
+<body>
+
+  <div id="bg-wash"></div>
+  <div id="scene-root"></div>
+
+  <div id="loading">INITIALISIERE SEQUENZ<span class="dot"></span></div>
+
+  <div id="ui">
+    <header class="hud">
+      <div class="hud-mark"><b>Sequenz&nbsp;01</b>Doppelhelix — Live-Rekonstruktion</div>
+      <div class="hud-coord">TIEFE <span id="hud-depth">0.000</span><br/>ABSCHNITT <span id="hud-section">01 / 05</span></div>
+    </header>
+
+    <div id="rail">
+      <div class="track"></div>
+      <div class="fill" id="rail-fill"></div>
+      <!-- nodes injected by JS -->
+    </div>
+
+    <div id="card">
+      <span class="idx" id="card-idx">01 / 05</span>
+      <h2 id="card-title">—</h2>
+      <p id="card-text">—</p>
+      <div class="stat"><span id="card-stat-label">—</span><span id="card-stat-value">—</span></div>
+    </div>
+
+    <div id="scrollhint"><span id="scrollhint-text">Sequenz wird rekonstruiert…</span><div class="chev"></div></div>
+  </div>
+
+<script type="module">
+import * as THREE from "https://esm.sh/three@0.160.0";
+
+/* ------------------------------------------------------------------ *
+ *  STATIONEN — Inhalte
+ * ------------------------------------------------------------------ */
+const STATIONS = [
+  {
+    u: 0.10, idx: "01 / 05", title: "Struktur",
+    text: "Zwei gegenläufige Zuckerphosphat-Stränge winden sich rechtshändig umeinander — ein Durchmesser von nur 2 Nanometern, entdeckt 1953 von Watson, Crick und Franklin.",
+    statLabel: "DURCHMESSER", statValue: "2.0 nm"
+  },
+  {
+    u: 0.30, idx: "02 / 05", title: "Basenpaare",
+    text: "Adenin bindet an Thymin, Guanin an Cytosin — gehalten von Wasserstoffbrücken. Diese Trapez-Sprossen sind das Alphabet, aus dem jede Sequenz besteht.",
+    statLabel: "BASENPAARE / MENSCH", statValue: "≈ 3.2 × 10⁹"
+  },
+  {
+    u: 0.50, idx: "03 / 05", title: "Windung",
+    text: "Pro voller Umdrehung liegen etwa 10.5 Basenpaare — eine Ganghöhe von 3.4 Nanometern. Die Krümmung dieser Bahn folgt genau diesem Rhythmus.",
+    statLabel: "GANGHÖHE", statValue: "3.4 nm"
+  },
+  {
+    u: 0.70, idx: "04 / 05", title: "Replikation",
+    text: "Die Helix entwindet sich, jeder Strang dient als Vorlage für einen neuen Partner — semikonservativ, fehlerkorrigiert, in Sekunden pro tausend Basen.",
+    statLabel: "SYNTHESE-RATE", statValue: "≈ 1000 bp/s"
+  },
+  {
+    u: 0.90, idx: "05 / 05", title: "Vererbung",
+    text: "Jede Kopie trägt die Sequenz weiter — mit seltenen Abweichungen. Aus diesen Abweichungen entsteht, über Generationen, alles, was sich Evolution nennt.",
+    statLabel: "MUTATIONSRATE", statValue: "≈ 1 / 10⁸ bp"
+  },
+];
+
+/* ------------------------------------------------------------------ *
+ *  PFAD — gekrümmte Achse aus überlagerten Sinuskurven
+ * ------------------------------------------------------------------ */
+const PATH_LENGTH = 260;      // Gesamtlänge entlang z
+const SAMPLES     = 1200;     // Auflösung der Pfad-Samples
+const TURNS       = 22;       // Windungen der Helix über die gesamte Strecke
+const HELIX_R     = 1.15;     // Radius der Doppelhelix
+
+function rawPathPoint(u) {
+  const z = u * PATH_LENGTH;
+  const x = 9.5 * Math.sin(u * Math.PI * 3.05) + 4.2 * Math.sin(u * Math.PI * 7.4 + 1.3);
+  const y = 6.0 * Math.sin(u * Math.PI * 2.15 + 0.6) + 2.0 * Math.sin(u * Math.PI * 5.6 + 2.1);
+  return new THREE.Vector3(x, y, z);
+}
+
+// Sample-Positionen
+const samplePos = [];
+for (let i = 0; i <= SAMPLES; i++) samplePos.push(rawPathPoint(i / SAMPLES));
+
+// Tangenten (zentrale Differenz)
+const sampleTan = [];
+for (let i = 0; i <= SAMPLES; i++) {
+  const a = samplePos[Math.max(0, i - 1)];
+  const b = samplePos[Math.min(SAMPLES, i + 1)];
+  sampleTan.push(b.clone().sub(a).normalize());
+}
+
+// Parallel-Transport-Frames — verhindert Twisting/Flackern der Rungs an Wendepunkten
+const sampleNorm = [];
+const sampleBin  = [];
+{
+  let n0 = new THREE.Vector3(0, 1, 0).cross(sampleTan[0]);
+  if (n0.lengthSq() < 1e-6) n0 = new THREE.Vector3(1, 0, 0).cross(sampleTan[0]);
+  n0.normalize();
+  sampleNorm.push(n0);
+  sampleBin.push(new THREE.Vector3().crossVectors(sampleTan[0], n0).normalize());
+
+  const q = new THREE.Quaternion();
+  for (let i = 1; i <= SAMPLES; i++) {
+    const t0 = sampleTan[i - 1], t1 = sampleTan[i];
+    const cross = new THREE.Vector3().crossVectors(t0, t1);
+    const dot = THREE.MathUtils.clamp(t0.dot(t1), -1, 1);
+    const angle = Math.acos(dot);
+    let n;
+    if (cross.lengthSq() < 1e-10 || angle < 1e-6) {
+      n = sampleNorm[i - 1].clone();
+    } else {
+      q.setFromAxisAngle(cross.normalize(), angle);
+      n = sampleNorm[i - 1].clone().applyQuaternion(q);
+    }
+    // orthogonalisieren gegen neue Tangente
+    n.sub(t1.clone().multiplyScalar(n.dot(t1))).normalize();
+    sampleNorm.push(n);
+    sampleBin.push(new THREE.Vector3().crossVectors(t1, n).normalize());
+  }
+}
+
+function getFrame(u) {
+  const f = THREE.MathUtils.clamp(u, 0, 1) * SAMPLES;
+  const i0 = Math.floor(f), i1 = Math.min(SAMPLES, i0 + 1);
+  const frac = f - i0;
+  const pos = samplePos[i0].clone().lerp(samplePos[i1], frac);
+  const tan = sampleTan[i0].clone().lerp(sampleTan[i1], frac).normalize();
+  const nor = sampleNorm[i0].clone().lerp(sampleNorm[i1], frac).normalize();
+  const bin = sampleBin[i0].clone().lerp(sampleBin[i1], frac).normalize();
+  return { pos, tan, nor, bin };
+}
+
+function strandPoint(u, strandOffset) {
+  const { pos, nor, bin } = getFrame(u);
+  const theta = u * TURNS * Math.PI * 2 + strandOffset;
+  return pos.clone()
+    .addScaledVector(nor, Math.cos(theta) * HELIX_R)
+    .addScaledVector(bin, Math.sin(theta) * HELIX_R);
+}
+
+/* ------------------------------------------------------------------ *
+ *  SZENE
+ * ------------------------------------------------------------------ */
+const root = document.getElementById('scene-root');
+const scene = new THREE.Scene();
+
+const camera = new THREE.PerspectiveCamera(52, innerWidth / innerHeight, 0.1, 500);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.setClearColor(0x000000, 0); // transparenter Hintergrund
+root.appendChild(renderer.domElement);
+
+const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+
+// Materialien, die während des Assembly-Intros von 0 auf ihre Ziel-Opazität eingeblendet werden
+const revealMaterials = [];
+function trackReveal(mat) {
+  mat.userData.baseOpacity = mat.opacity;
+  mat.opacity = 0;
+  revealMaterials.push(mat);
+  return mat;
+}
+
+/* --- Stränge: je 4 Glow-Passes (outer/mid/inner/core) --- */
+const STRAND_SEGMENTS = isMobile ? 260 : 420;
+const GLOW_LAYERS = [
+  { radius: 0.85, opacity: 0.05, color: 0x0e7490 },
+  { radius: 0.46, opacity: 0.14, color: 0x22d3ee },
+  { radius: 0.22, opacity: 0.32, color: 0xa5f3fc },
+  { radius: 0.085, opacity: 1.00, color: 0xeafffe },
+];
+
+function buildStrand(offset) {
+  const pts = [];
+  for (let i = 0; i <= STRAND_SEGMENTS; i++) pts.push(strandPoint(i / STRAND_SEGMENTS, offset));
+  const curve = new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.3);
+  const group = new THREE.Group();
+  GLOW_LAYERS.forEach(layer => {
+    const geo = new THREE.TubeGeometry(curve, STRAND_SEGMENTS, layer.radius, 6, false);
+    const mat = trackReveal(new THREE.MeshBasicMaterial({
+      color: layer.color, transparent: true, opacity: layer.opacity,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    }));
+    group.add(new THREE.Mesh(geo, mat));
+  });
+  return group;
+}
+
+const strandGroup = new THREE.Group();
+strandGroup.add(buildStrand(0));
+strandGroup.add(buildStrand(Math.PI));
+scene.add(strandGroup);
+
+/* --- Rungs: dünne, linienartige Verbindungsstäbchen zwischen den Strängen --- */
+// Unit-Zylinder (Radius 1, Länge 1, entlang lokaler Y-Achse, 6 Facetten für den kristallinen Look).
+// Pro Rung wird nur mit Skalierung (Radius je Glow-Layer, Länge = Strang-Abstand) gearbeitet —
+// dadurch werden die Brücken zu dünnen Linien/Stäbchen statt flachen Platten.
+const rungCylGeo = new THREE.CylinderGeometry(1, 1, 1, 6, 1, false);
+
+const RUNG_COUNT = isMobile ? 70 : 120;
+const dummy = new THREE.Object3D();
+const basisMat = new THREE.Matrix4();
+
+// Position + Rotation + Länge pro Rung einmal berechnen, damit alle Glow-Layer sie wiederverwenden können
+const rungTransforms = [];
+for (let i = 0; i < RUNG_COUNT; i++) {
+  const u = (i + 0.5) / RUNG_COUNT;
+  const a = strandPoint(u, 0);
+  const b = strandPoint(u, Math.PI);
+  const { tan } = getFrame(u);
+  const across = b.clone().sub(a);
+  const mid = a.clone().add(b).multiplyScalar(0.5);
+  const yAxis = across.clone().normalize();               // Länge des Stäbchens: Strang zu Strang
+  const xAxis = new THREE.Vector3().crossVectors(tan, yAxis).normalize();
+  const zAxis = new THREE.Vector3().crossVectors(xAxis, yAxis).normalize();
+  basisMat.makeBasis(xAxis, yAxis, zAxis);
+  const quat = new THREE.Quaternion().setFromRotationMatrix(basisMat);
+  rungTransforms.push({ pos: mid, quat, length: across.length() });
+}
+
+// Gleiches Glow-Rezept wie bei den Spiralen (outer/mid/inner/core), nur schlanker dimensioniert,
+// damit die Brücken als leuchtende Linien wirken statt als Platten.
+const RUNG_GLOW_LAYERS = [
+  { radius: 0.34, opacity: 0.06, color: 0x0e7490 },
+  { radius: 0.19, opacity: 0.16, color: 0x22d3ee },
+  { radius: 0.10, opacity: 0.36, color: 0xa5f3fc },
+  { radius: 0.045, opacity: 0.95, color: 0xeafffe },
+];
+const rungGroup = new THREE.Group();
+RUNG_GLOW_LAYERS.forEach(layer => {
+  const mat = trackReveal(new THREE.MeshBasicMaterial({
+    color: layer.color, transparent: true, opacity: layer.opacity,
+    blending: THREE.AdditiveBlending, depthWrite: false,
+  }));
+  const mesh = new THREE.InstancedMesh(rungCylGeo, mat, RUNG_COUNT);
+  rungTransforms.forEach((tr, i) => {
+    dummy.position.copy(tr.pos);
+    dummy.quaternion.copy(tr.quat);
+    dummy.scale.set(layer.radius, tr.length, layer.radius);
+    dummy.updateMatrix();
+    mesh.setMatrixAt(i, dummy.matrix);
+  });
+  mesh.instanceMatrix.needsUpdate = true;
+  rungGroup.add(mesh);
+});
+scene.add(rungGroup);
+
+/* --- pulsierende Nodes an den Strängen --- */
+const NODE_COUNT = isMobile ? 40 : 70;
+const nodeGeo = new THREE.IcosahedronGeometry(0.16, 1);
+const nodeMat = trackReveal(new THREE.MeshBasicMaterial({
+  color: 0xeafffe, transparent: true, opacity: 0.9,
+  blending: THREE.AdditiveBlending, depthWrite: false,
+}));
+const nodeMesh = new THREE.InstancedMesh(nodeGeo, nodeMat, NODE_COUNT * 2);
+const nodeBaseScale = new Float32Array(NODE_COUNT * 2);
+const nodePhase = new Float32Array(NODE_COUNT * 2);
+{
+  let k = 0;
+  for (let s = 0; s < 2; s++) {
+    for (let i = 0; i < NODE_COUNT; i++) {
+      const u = (i + Math.random() * 0.6) / NODE_COUNT;
+      const p = strandPoint(u, s === 0 ? 0 : Math.PI);
+      dummy.position.copy(p);
+      dummy.scale.setScalar(1);
+      dummy.quaternion.identity();
+      dummy.updateMatrix();
+      nodeMesh.setMatrixAt(k, dummy.matrix);
+      nodeBaseScale[k] = 0.7 + Math.random() * 0.8;
+      nodePhase[k] = Math.random() * Math.PI * 2;
+      k++;
+    }
+  }
+}
+scene.add(nodeMesh);
+
+/* --- Kristall-Fragmente (rotierend, driftend) --- */
+const FRAG_COUNT = isMobile ? 55 : 100;
+const fragGeo = new THREE.TetrahedronGeometry(0.5, 0);
+const fragMat = new THREE.MeshBasicMaterial({
+  color: 0x8fe9f4, transparent: true, opacity: 0.28,
+  blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+});
+const fragMesh = new THREE.InstancedMesh(fragGeo, fragMat, FRAG_COUNT);
+const fragData = [];
+for (let i = 0; i < FRAG_COUNT; i++) {
+  const u = Math.random();
+  const p = rawPathPoint(u).clone();
+  const spread = 7 + Math.random() * 9;
+  const ang = Math.random() * Math.PI * 2;
+  p.x += Math.cos(ang) * spread;
+  p.y += Math.sin(ang) * spread;
+  fragData.push({
+    base: p, u,
+    spinAxis: new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize(),
+    spinSpeed: 0.2 + Math.random() * 0.6,
+    scale: 0.4 + Math.random() * 1.1,
+    bob: Math.random() * Math.PI * 2,
+  });
+}
+scene.add(fragMesh);
+
+/* --- Ambient-Partikel (1000) via Points/Shader --- */
+const AMBIENT_COUNT = isMobile ? 450 : 1000;
+const ambPos = new Float32Array(AMBIENT_COUNT * 3);
+const ambSeed = new Float32Array(AMBIENT_COUNT);
+for (let i = 0; i < AMBIENT_COUNT; i++) {
+  const u = Math.random();
+  const p = rawPathPoint(u);
+  const r = 6 + Math.random() * 22;
+  const ang = Math.random() * Math.PI * 2;
+  ambPos[i * 3 + 0] = p.x + Math.cos(ang) * r;
+  ambPos[i * 3 + 1] = p.y + Math.sin(ang) * r * 0.7;
+  ambPos[i * 3 + 2] = p.z + (Math.random() - 0.5) * 10;
+  ambSeed[i] = Math.random() * Math.PI * 2;
+}
+const ambGeo = new THREE.BufferGeometry();
+ambGeo.setAttribute('position', new THREE.BufferAttribute(ambPos, 3));
+ambGeo.setAttribute('seed', new THREE.BufferAttribute(ambSeed, 1));
+const ambMat = new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  uniforms: { uTime: { value: 0 }, uColor: { value: new THREE.Color(0x8fe9f4) } },
+  vertexShader: `
+    attribute float seed;
+    uniform float uTime;
+    varying float vAlpha;
+    void main() {
+      vec3 p = position;
+      p.x += sin(uTime * 0.15 + seed * 6.283) * 0.6;
+      p.y += cos(uTime * 0.12 + seed * 4.0) * 0.6;
+      vec4 mv = modelViewMatrix * vec4(p, 1.0);
+      float pulse = 0.5 + 0.5 * sin(uTime * 1.4 + seed * 6.283);
+      vAlpha = 0.25 + 0.55 * pulse;
+      gl_PointSize = (1.6 + pulse * 1.8) * (220.0 / -mv.z);
+      gl_Position = projectionMatrix * mv;
+    }
+  `,
+  fragmentShader: `
+    varying float vAlpha;
+    uniform vec3 uColor;
+    void main() {
+      vec2 c = gl_PointCoord - 0.5;
+      float d = length(c);
+      if (d > 0.5) discard;
+      float glow = smoothstep(0.5, 0.0, d);
+      gl_FragColor = vec4(uColor, glow * vAlpha);
+    }
+  `
+});
+scene.add(new THREE.Points(ambGeo, ambMat));
+
+/* --- Trail-Partikel (200) — folgen hinter der Kamera entlang des Pfads --- */
+const TRAIL_COUNT = isMobile ? 90 : 200;
+const trailPos = new Float32Array(TRAIL_COUNT * 3);
+const trailU = new Float32Array(TRAIL_COUNT);
+const trailOff = new Float32Array(TRAIL_COUNT * 2); // radial offset (radius, angle)
+for (let i = 0; i < TRAIL_COUNT; i++) {
+  trailU[i] = Math.random();
+  trailOff[i * 2 + 0] = 1.4 + Math.random() * 2.6;
+  trailOff[i * 2 + 1] = Math.random() * Math.PI * 2;
+}
+const trailGeo = new THREE.BufferGeometry();
+trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPos, 3));
+const trailMat = new THREE.PointsMaterial({
+  color: 0xeafffe, size: 0.14, transparent: true, opacity: 0.75,
+  blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: true,
+});
+const trailPoints = new THREE.Points(trailGeo, trailMat);
+scene.add(trailPoints);
+
+/* --- Assembly-Intro: DNA setzt sich aus vielen Einzelpartikeln zusammen --- */
+const ASSEMBLY_COUNT = isMobile ? 480 : 900;
+const ASSEMBLY_DURATION = 3.4; // Sekunden
+const aStart = new Float32Array(ASSEMBLY_COUNT * 3);
+const aTarget = new Float32Array(ASSEMBLY_COUNT * 3);
+const aSeed = new Float32Array(ASSEMBLY_COUNT);
+for (let i = 0; i < ASSEMBLY_COUNT; i++) {
+  // Ziele entlang des sichtbaren Streckenanfangs, damit sich die Helix direkt vor der Kamera formt
+  const u = Math.pow(Math.random(), 0.6) * 0.42;
+  const target = strandPoint(u, Math.random() < 0.5 ? 0 : Math.PI);
+  const dir = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize();
+  const spread = 12 + Math.random() * 16;
+  const start = target.clone().addScaledVector(dir, spread);
+  aTarget[i * 3 + 0] = target.x; aTarget[i * 3 + 1] = target.y; aTarget[i * 3 + 2] = target.z;
+  aStart[i * 3 + 0] = start.x; aStart[i * 3 + 1] = start.y; aStart[i * 3 + 2] = start.z;
+  aSeed[i] = Math.random();
+}
+const assemblyGeo = new THREE.BufferGeometry();
+assemblyGeo.setAttribute('aStart', new THREE.BufferAttribute(aStart, 3));
+assemblyGeo.setAttribute('aTarget', new THREE.BufferAttribute(aTarget, 3));
+assemblyGeo.setAttribute('aSeed', new THREE.BufferAttribute(aSeed, 1));
+assemblyGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(ASSEMBLY_COUNT * 3), 3));
+const assemblyMat = new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  uniforms: {
+    uProgress: { value: 0 },
+    uFade: { value: 1 },
+    uColor: { value: new THREE.Color(0xeafffe) },
+  },
+  vertexShader: `
+    attribute vec3 aStart;
+    attribute vec3 aTarget;
+    attribute float aSeed;
+    uniform float uProgress;
+    varying float vArrival;
+    void main() {
+      // gestaffelter Start pro Partikel, damit sie nicht wie eine Wand gleichzeitig eintreffen
+      float delay = aSeed * 0.55;
+      float t = clamp((uProgress - delay) / max(0.001, 1.0 - delay), 0.0, 1.0);
+      float e = t * t * (3.0 - 2.0 * t);
+      vec3 p = mix(aStart, aTarget, e);
+      vArrival = e;
+      vec4 mv = modelViewMatrix * vec4(p, 1.0);
+      gl_PointSize = mix(3.4, 1.3, e) * (220.0 / -mv.z);
+      gl_Position = projectionMatrix * mv;
+    }
+  `,
+  fragmentShader: `
+    varying float vArrival;
+    uniform vec3 uColor;
+    uniform float uFade;
+    void main() {
+      vec2 c = gl_PointCoord - 0.5;
+      float d = length(c);
+      if (d > 0.5) discard;
+      float glow = smoothstep(0.5, 0.0, d);
+      // Partikel verblassen kurz nachdem sie ihr Ziel erreicht haben — sie "werden" die Struktur
+      float settleFade = 1.0 - smoothstep(0.82, 1.0, vArrival);
+      gl_FragColor = vec4(uColor, glow * settleFade * uFade);
+    }
+  `
+});
+const assemblyPoints = new THREE.Points(assemblyGeo, assemblyMat);
+assemblyPoints.frustumCulled = false; // Positionen werden im Shader berechnet, keine sinnvolle BBox verfügbar
+scene.add(assemblyPoints);
+
+let assemblyDone = false;
+let assemblyDoneAt = 0;
+
+/* ------------------------------------------------------------------ *
+ *  SCROLL / TOUCH — Fortschritt entlang der Route
+ * ------------------------------------------------------------------ */
+let progress = 0;       // Ziel-Fortschritt 0..1 (leicht jenseits der Stationen begrenzt)
+let progressSmooth = 0; // gedämpfter, tatsächlich angezeigter Wert
+const MAX_U = 0.97;
+
+function addProgress(delta) {
+  if (!assemblyDone) return; // während des Assembly-Intros bleibt die Kamera fest
+  progress = THREE.MathUtils.clamp(progress + delta, 0, MAX_U);
+  document.getElementById('scrollhint').style.opacity = progress > 0.02 ? '0' : '1';
+}
+
+window.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  addProgress(e.deltaY * 0.00028);
+}, { passive: false });
+
+let touchY = null;
+window.addEventListener('touchstart', (e) => { touchY = e.touches[0].clientY; }, { passive: true });
+window.addEventListener('touchmove', (e) => {
+  if (touchY === null) return;
+  const dy = touchY - e.touches[0].clientY;
+  addProgress(dy * 0.0016);
+  touchY = e.touches[0].clientY;
+}, { passive: true });
+window.addEventListener('touchend', () => { touchY = null; });
+
+let keyHeld = 0;
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowDown' || e.key === 'PageDown') keyHeld = 1;
+  if (e.key === 'ArrowUp' || e.key === 'PageUp') keyHeld = -1;
+});
+window.addEventListener('keyup', () => { keyHeld = 0; });
+
+/* ------------------------------------------------------------------ *
+ *  UI-BINDUNG
+ * ------------------------------------------------------------------ */
+const railEl = document.getElementById('rail');
+STATIONS.forEach((st) => {
+  const n = document.createElement('div');
+  n.className = 'rail-node';
+  n.style.bottom = (st.u * 100) + '%';
+  n.innerHTML = `<span class="rn-label">${st.title}</span>`;
+  railEl.appendChild(n);
+});
+const railNodes = railEl.querySelectorAll('.rail-node');
+const railFill = document.getElementById('rail-fill');
+
+const card = document.getElementById('card');
+const cardIdx = document.getElementById('card-idx');
+const cardTitle = document.getElementById('card-title');
+const cardText = document.getElementById('card-text');
+const cardStatLabel = document.getElementById('card-stat-label');
+const cardStatValue = document.getElementById('card-stat-value');
+const hudDepth = document.getElementById('hud-depth');
+const hudSection = document.getElementById('hud-section');
+
+const STATION_RADIUS = 0.055; // Nähe-Schwelle für Fade-in
+let activeStation = -1;
+
+function updateUI(u) {
+  railFill.style.height = (u * 100) + '%';
+  hudDepth.textContent = u.toFixed(3);
+
+  let nearest = 0, nearestDist = Infinity;
+  STATIONS.forEach((st, i) => {
+    const d = Math.abs(st.u - u);
+    if (d < nearestDist) { nearestDist = d; nearest = i; }
+  });
+  hudSection.textContent = STATIONS[nearest].idx;
+  railNodes.forEach((n, i) => n.classList.toggle('active', i === nearest && nearestDist < STATION_RADIUS * 3));
+
+  if (nearestDist < STATION_RADIUS) {
+    if (activeStation !== nearest) {
+      activeStation = nearest;
+      const st = STATIONS[nearest];
+      cardIdx.textContent = st.idx;
+      cardTitle.textContent = st.title;
+      cardText.textContent = st.text;
+      cardStatLabel.textContent = st.statLabel;
+      cardStatValue.textContent = st.statValue;
+    }
+    card.classList.add('show');
+  } else {
+    card.classList.remove('show');
+    if (nearestDist > STATION_RADIUS * 2.2) activeStation = -1;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ *  RESIZE
+ * ------------------------------------------------------------------ */
+window.addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+/* ------------------------------------------------------------------ *
+ *  ANIMATIONSSCHLEIFE
+ * ------------------------------------------------------------------ */
+const clock = new THREE.Clock();
+const camUpOffset = 3.4;   // Höhe der Kamera über der Helix
+const lookAhead = 0.012;   // wie weit voraus die Kamera schaut
+const worldUp = new THREE.Vector3(0, 1, 0);
+
+// Seiten-Profil der Kamera über den Streckenverlauf: -1 = links, +1 = rechts.
+// Start links, wechselt in der zweiten Kurve auf rechts, kurz vor Streckenende zurück nach links.
+const SIDE_KEYFRAMES = [
+  [0.00, -1], [0.10, -1], [0.22, 1], [0.55, 1], [0.67, -1], [1.00, -1],
+];
+function sideProfile(u) {
+  for (let i = 0; i < SIDE_KEYFRAMES.length - 1; i++) {
+    const [u0, s0] = SIDE_KEYFRAMES[i], [u1, s1] = SIDE_KEYFRAMES[i + 1];
+    if (u <= u1 || i === SIDE_KEYFRAMES.length - 2) {
+      const f = THREE.MathUtils.clamp((u - u0) / Math.max(1e-6, u1 - u0), 0, 1);
+      const e = f * f * (3 - 2 * f); // smoothstep
+      return s0 + (s1 - s0) * e;
+    }
+  }
+  return SIDE_KEYFRAMES[SIDE_KEYFRAMES.length - 1][1];
+}
+// Welt-referenzierte Kameraachsen (statt der verdrehten Strang-Frames), damit "links/rechts" stabil bleibt
+function camAxes(tan) {
+  let right = new THREE.Vector3().crossVectors(tan, worldUp);
+  if (right.lengthSq() < 1e-6) right = new THREE.Vector3(1, 0, 0).cross(tan);
+  right.normalize();
+  const up = new THREE.Vector3().crossVectors(right, tan).normalize();
+  return { right, up };
+}
+
+function tick() {
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const t = clock.elapsedTime;
+
+  // Assembly-Intro: Partikel fliegen aus dem Zufallsraum zusammen, Struktur blendet parallel ein
+  if (!assemblyDone) {
+    const raw = THREE.MathUtils.clamp(t / ASSEMBLY_DURATION, 0, 1);
+    const eased = 1 - Math.pow(1 - raw, 3);
+    assemblyMat.uniforms.uProgress.value = eased;
+    const reveal = THREE.MathUtils.clamp((raw - 0.45) / 0.55, 0, 1);
+    const revealEased = reveal * reveal * (3 - 2 * reveal);
+    revealMaterials.forEach(m => { m.opacity = m.userData.baseOpacity * revealEased; });
+    if (raw >= 1) {
+      assemblyDone = true;
+      assemblyDoneAt = t;
+      document.getElementById('scrollhint-text').textContent = 'Scrollen zum Erkunden';
+    }
+  } else {
+    const since = t - assemblyDoneAt;
+    assemblyMat.uniforms.uFade.value = Math.max(0, 1 - since / 1.2);
+  }
+
+  if (keyHeld !== 0) addProgress(keyHeld * dt * 0.09);
+  progressSmooth += (progress - progressSmooth) * Math.min(1, dt * 4.2);
+  const u = progressSmooth;
+
+  // Kamera: über der Helix, mit Seitenwechsel links/rechts entlang der Route + Banking
+  const frame = getFrame(u);
+  const frameAhead = getFrame(Math.min(1, u + lookAhead));
+  const side = sideProfile(u);
+  const sideAhead = sideProfile(Math.min(1, u + lookAhead));
+  const axes = camAxes(frame.tan);
+  const axesAhead = camAxes(frameAhead.tan);
+
+  const camPos = frame.pos.clone()
+    .addScaledVector(axes.up, camUpOffset * 0.85)
+    .addScaledVector(axes.right, side * camUpOffset * 1.15);
+  camera.position.copy(camPos);
+
+  const lookTarget = frameAhead.pos.clone()
+    .addScaledVector(axesAhead.up, camUpOffset * 0.25)
+    .addScaledVector(axesAhead.right, sideAhead * camUpOffset * 0.25);
+  camera.up.copy(axes.up);
+  camera.lookAt(lookTarget);
+
+  // Banking: leichte Kurven-Neigung plus Roll beim Seitenwechsel
+  const curveBank = (frameAhead.tan.x - frame.tan.x) * 3.2;
+  const sideBank = (sideAhead - side) * 0.7;
+  camera.rotateZ(THREE.MathUtils.clamp(curveBank + sideBank, -0.5, 0.5));
+
+  // pulsierende Nodes
+  for (let k = 0; k < NODE_COUNT * 2; k++) {
+    const pulse = 0.75 + 0.35 * Math.sin(t * 1.8 + nodePhase[k]);
+    nodeMesh.getMatrixAt(k, dummy.matrix);
+    dummy.matrix.decompose(dummy.position, dummy.quaternion, dummy.scale);
+    dummy.scale.setScalar(nodeBaseScale[k] * pulse);
+    dummy.updateMatrix();
+    nodeMesh.setMatrixAt(k, dummy.matrix);
+  }
+  nodeMesh.instanceMatrix.needsUpdate = true;
+
+  // rotierende Kristall-Fragmente
+  for (let i = 0; i < FRAG_COUNT; i++) {
+    const f = fragData[i];
+    dummy.position.copy(f.base);
+    dummy.position.y += Math.sin(t * 0.6 + f.bob) * 0.8;
+    dummy.quaternion.setFromAxisAngle(f.spinAxis, t * f.spinSpeed);
+    dummy.scale.setScalar(f.scale);
+    dummy.updateMatrix();
+    fragMesh.setMatrixAt(i, dummy.matrix);
+  }
+  fragMesh.instanceMatrix.needsUpdate = true;
+
+  // Trail-Partikel: kreisen knapp hinter der Kamera entlang der Route, faden mit Abstand
+  for (let i = 0; i < TRAIL_COUNT; i++) {
+    let tu = trailU[i] - dt * 0.012; // driften rückwärts relativ zur Route
+    if (tu < 0) tu += 1;
+    trailU[i] = tu;
+    const localU = THREE.MathUtils.clamp(u - (0.002 + (i / TRAIL_COUNT) * 0.05), 0, 1);
+    const fr = getFrame(localU);
+    const [r, ang0] = [trailOff[i * 2], trailOff[i * 2 + 1] + t * 0.15];
+    const p = fr.pos.clone()
+      .addScaledVector(fr.nor, Math.cos(ang0) * r)
+      .addScaledVector(fr.bin, Math.sin(ang0) * r);
+    trailPos[i * 3 + 0] = p.x; trailPos[i * 3 + 1] = p.y; trailPos[i * 3 + 2] = p.z;
+  }
+  trailGeo.attributes.position.needsUpdate = true;
+
+  ambMat.uniforms.uTime.value = t;
+
+  updateUI(u);
+  renderer.render(scene, camera);
+  requestAnimationFrame(tick);
+}
+
+requestAnimationFrame(() => {
+  document.getElementById('loading').style.opacity = '0';
+  setTimeout(() => document.getElementById('loading').remove(), 650);
+  tick();
+});
+</script>
+</body>
+</html>
