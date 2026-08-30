@@ -28,6 +28,7 @@
 
   #root {
     min-height: 100dvh;
+    background: #000000;
   }
 
   @keyframes scale {
