@@ -57,7 +57,10 @@
     @apply border border-white/20 backdrop-blur-xl;
   }
   .invert-all {
-    filter: invert(1) hue-rotate(180deg);
+    filter: invert(var(--invert-amount)) hue-rotate(180deg);
     transition: filter 0.4s ease;
+  }
+  :root {
+    --invert-amount: 1;
   }
 }
